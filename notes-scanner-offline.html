@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes Scanner</title>
+<style>
+:root{--n9:#010736;--n8:#0d1c42;--n6:#22396f;--cream:#fcf1d0;--mute:rgba(252,241,208,.62)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--n9);color:var(--cream);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Devanagari",sans-serif}
+main{max-width:680px;margin:0 auto;padding:32px 18px 80px}
+h1{font-size:22px;font-weight:600;letter-spacing:.02em;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 28px;font-size:15px}
+.steps{display:flex;gap:18px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-bottom:22px}
+.steps span.on{color:var(--cream);border-bottom:2px solid var(--cream);padding-bottom:3px}
+.card{background:var(--n8);border:1px solid var(--n6);border-radius:10px;padding:18px;margin-bottom:14px}
+.card h2{font-size:15px;font-weight:600;margin:0 0 4px}
+.mute{color:var(--mute);font-size:14px}
+button,select,input[type=text]{font:inherit;color:var(--cream);background:transparent;border:1px solid var(--n6);border-radius:8px;padding:10px 16px;cursor:pointer}
+select,input[type=text]{background:var(--n9);cursor:auto}
+input[type=text]{width:100%}
+select{cursor:pointer}
+button:hover{border-color:var(--cream)}
+button.pri{background:var(--cream);color:var(--n9);border-color:var(--cream);font-weight:600}
+button:disabled{opacity:.4;cursor:default}
+button.sm{padding:6px 12px;font-size:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.drop{display:block;border:1px dashed var(--n6);border-radius:10px;padding:34px 16px;text-align:center;cursor:pointer;color:var(--mute)}
+.drop:hover{border-color:var(--cream);color:var(--cream)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin:16px 0}
+.thumbs div{font-size:13px;color:var(--mute)}
+.thumbs img{width:100%;height:120px;object-fit:cover;border-radius:6px;border:1px solid var(--n6);display:block;margin-bottom:4px}
+.thumbs a{color:var(--cream);cursor:pointer;text-decoration:underline;margin-left:6px}
+.bar{height:3px;background:var(--n6);border-radius:3px;overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;width:0;background:var(--cream);transition:width .2s}
+.ed{width:100%;min-height:70px;background:var(--n9);border:1px solid var(--n6);border-radius:8px;padding:10px;margin-top:10px;white-space:pre-wrap;outline:none}
+.ed:focus{border-color:var(--cream)}
+.ed mark{background:rgba(252,241,208,.22);color:var(--cream);border-bottom:1px dashed var(--cream);border-radius:2px}
+.blk img{max-width:100%;border-radius:6px;display:block;margin-top:10px;border:1px solid var(--n6)}
+#crop{position:relative;touch-action:none;margin:12px 0;display:none;user-select:none}
+#crop img{width:100%;display:block;border-radius:6px;pointer-events:none}
+#sel{position:absolute;border:2px solid var(--cream);background:rgba(252,241,208,.15);display:none}
+.hide{display:none}
+#st,#st2{margin-top:12px;font-size:14px;color:var(--mute)}
+</style>
+</head>
+<body>
+<main>
+<h1>Notes Scanner</h1>
+<p class="sub">Turn photos of notes into a clean, editable PDF.</p>
+<div class="steps"><span id="t1" class="on">Upload</span><span id="t2">Review</span><span id="t3">Export</span></div>
+
+<section id="s1">
+  <div class="card">
+    <label class="drop" for="pick">Tap to add photos of your notes<br><span class="mute">No page limit. Add as many as you need.</span></label>
+    <input id="pick" type="file" accept="image/*" multiple class="hide">
+    <div class="thumbs" id="thumbs"></div>
+    <div class="row">
+      <select id="lang">
+        <option value="eng">English</option>
+        <option value="hin">Hindi</option>
+        <option value="eng+hin">English + Hindi</option>
+      </select>
+      <button class="pri" id="go" disabled>Read notes</button>
+    </div>
+    <div class="bar hide" id="bar"><i id="bari"></i></div>
+    <div id="st"></div>
+  </div>
+</section>
+
+<section id="s2" class="hide">
+  <div class="card">
+    <h2>Title</h2>
+    <input type="text" id="title" placeholder="Title of the notes">
+  </div>
+  <div class="card">
+    <h2>Check highlighted words</h2>
+    <div class="mute">Underlined words were hard to read. Fix them if needed. You can edit everything below.</div>
+  </div>
+  <div id="blocks"></div>
+  <div class="row" style="margin:6px 0 18px">
+    <button class="sm" onclick="addBlock('text')">Add text</button>
+    <button class="sm" onclick="addBlock('heading')">Add heading</button>
+    <button class="sm" onclick="addBlock('bullet')">Add bullet</button>
+  </div>
+  <div class="card">
+    <h2>Add a diagram</h2>
+    <div class="mute">Choose a page, drag a box around the diagram, then add it.</div>
+    <div class="row" id="pagepick" style="margin-top:10px"></div>
+    <div id="crop"><img id="cimg" alt=""><div id="sel"></div></div>
+    <button class="sm" id="addd" disabled>Add selection</button>
+    <span class="mute" id="dst"></span>
+  </div>
+  <div class="row">
+    <button class="pri" id="mk">Download PDF</button>
+    <button onclick="reset()">Start over</button>
+  </div>
+  <div id="st2"></div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let pages=[],blocks=[];
+
+function step(n){['t1','t2','t3'].forEach((id,i)=>$(id).classList.toggle('on',i===n-1))}
+
+/* ---------- upload ---------- */
+$('pick').onchange=async e=>{
+  for(const f of e.target.files){
+    try{
+      const bm=await createImageBitmap(f);
+      const s=Math.min(1,2200/Math.max(bm.width,bm.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(bm.width*s);c.height=Math.round(bm.height*s);
+      c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+      pages.push({c,view:c.toDataURL('image/jpeg',.7)});
+    }catch(err){$('st').textContent='One image could not be opened.'}
+  }
+  e.target.value='';drawThumbs();
+};
+function drawThumbs(){
+  const t=$('thumbs');t.innerHTML='';
+  pages.forEach((p,i)=>{
+    const d=document.createElement('div');
+    const g=document.createElement('img');g.src=p.view;
+    const a=document.createElement('a');a.textContent='Remove';a.onclick=()=>{pages.splice(i,1);drawThumbs()};
+    d.append(g,document.createTextNode('Page '+(i+1)),a);t.append(d);
+  });
+  $('go').disabled=!pages.length;
+}
+
+/* ---------- OCR ---------- */
+$('go').onclick=async()=>{
+  const st=$('st'),bar=$('bar'),bi=$('bari');
+  $('go').disabled=true;bar.classList.remove('hide');bi.style.width='0';
+  let cur=0,worker;
+  try{
+    st.textContent='Loading reading engine (first time needs internet)...';
+    worker=await Tesseract.createWorker($('lang').value,1,{logger:m=>{
+      if(m.status==='recognizing text'){
+        bi.style.width=((cur+m.progress)/pages.length*100)+'%';
+        st.textContent='Reading page '+(cur+1)+' of '+pages.length+'...';
+      }
+    }});
+  }catch(e){
+    st.textContent='Could not load the reading engine. Check your internet connection and try again.';
+    $('go').disabled=false;return;
+  }
+  blocks=[];
+  try{
+    for(cur=0;cur<pages.length;cur++){
+      const {data}=await worker.recognize(pages[cur].c);
+      const paras=data.paragraphs&&data.paragraphs.length?data.paragraphs:null;
+      if(paras){
+        paras.forEach(p=>{
+          const text=(p.lines||[]).map(l=>l.text.trim()).filter(Boolean).join('\n');
+          if(text.replace(/\s/g,'').length<2)return;
+          const html=(p.lines||[]).map(l=>(l.words||[]).map(w=>w.confidence<70?'<mark>'+esc(w.text)+'</mark>':esc(w.text)).join(' ')).filter(Boolean).join('\n');
+          blocks.push({type:'text',text,html});
+        });
+      }else{
+        data.text.split(/\n\s*\n/).forEach(t=>{t=t.trim();if(t)blocks.push({type:'text',text:t,html:esc(t)})});
+      }
+    }
+  }catch(e){
+    st.textContent='Something went wrong while reading. Try clearer photos.';
+    $('go').disabled=false;await worker.terminate();return;
+  }
+  await worker.terminate();
+  if(!blocks.length)blocks.push({type:'text',text:'',html:''});
+  if(!$('title').value)$('title').value='My notes';
+  $('s1').classList.add('hide');$('s2').classList.remove('hide');step(2);
+  drawBlocks();drawPick();
+};
+
+/* ---------- editor ---------- */
+function drawBlocks(){
+  const box=$('blocks');box.innerHTML='';
+  blocks.forEach((b,i)=>{
+    const card=document.createElement('div');card.className='card blk';
+    const top=document.createElement('div');top.className='row';
+    if(b.type!=='diagram'){
+      const sel=document.createElement('select');
+      [['heading','Heading'],['text','Text'],['bullet','Bullet']].forEach(([v,l])=>{const o=new Option(l,v);o.selected=b.type===v;sel.add(o)});
+      sel.onchange=()=>b.type=sel.value;top.append(sel);
+    }else{
+      const t=document.createElement('span');t.className='mute';t.textContent='Diagram';top.append(t);
+    }
+    const mv=(l,fn)=>{const x=document.createElement('button');x.className='sm';x.textContent=l;x.onclick=fn;top.append(x)};
+    mv('Up',()=>{if(i>0){[blocks[i-1],blocks[i]]=[blocks[i],blocks[i-1]];drawBlocks()}});
+    mv('Down',()=>{if(i<blocks.length-1){[blocks[i+1],blocks[i]]=[blocks[i],blocks[i+1]];drawBlocks()}});
+    mv('Delete',()=>{blocks.splice(i,1);drawBlocks()});
+    card.append(top);
+    if(b.img){const g=document.createElement('img');g.src=b.img;card.append(g)}
+    const ed=document.createElement('div');ed.className='ed';ed.contentEditable='true';
+    if(b.type==='diagram'){ed.style.minHeight='0';ed.dataset.ph='Caption'}
+    ed.innerHTML=b.html||'';
+    ed.oninput=()=>{b.text=ed.innerText.replace(/\n$/,'');b.html=ed.innerHTML};
+    ed.onpaste=e=>{e.preventDefault();document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text'))};
+    card.append(ed);box.append(card);
+  });
+}
+function addBlock(t){blocks.push({type:t,text:'',html:''});drawBlocks();const e=$('blocks').lastChild.querySelector('.ed');e.focus();e.scrollIntoView({block:'center'})}
+function reset(){pages=[];blocks=[];$('title').value='';drawThumbs();$('st').textContent='';$('bar').classList.add('hide');$('st2').textContent='';$('s2').classList.add('hide');$('s1').classList.remove('hide');$('crop').style.display='none';step(1)}
+
+/* ---------- diagram crop ---------- */
+let cp=-1,drag=null,rect=null;
+function drawPick(){
+  const p=$('pagepick');p.innerHTML='';
+  pages.forEach((_,i)=>{
+    const b=document.createElement('button');b.className='sm';b.textContent='Page '+(i+1);
+    b.onclick=()=>{cp=i;$('cimg').src=pages[i].view;$('crop').style.display='block';$('sel').style.display='none';rect=null;$('addd').disabled=true;$('dst').textContent=''};
+    p.append(b);
+  });
+}
+const crop=$('crop');
+crop.onpointerdown=e=>{
+  const r=$('cimg').getBoundingClientRect();
+  drag={x:e.clientX-r.left,y:e.clientY-r.top,w:r.width,h:r.height,l:r.left,t:r.top};
+  crop.setPointerCapture(e.pointerId);
+};
+crop.onpointermove=e=>{
+  if(!drag)return;
+  const x=Math.min(Math.max(e.clientX-drag.l,0),drag.w),y=Math.min(Math.max(e.clientY-drag.t,0),drag.h);
+  rect={x:Math.min(drag.x,x),y:Math.min(drag.y,y),w:Math.abs(x-drag.x),h:Math.abs(y-drag.y),W:drag.w,H:drag.h};
+  const s=$('sel');s.style.display='block';
+  s.style.left=rect.x+'px';s.style.top=rect.y+'px';s.style.width=rect.w+'px';s.style.height=rect.h+'px';
+  $('addd').disabled=rect.w<12||rect.h<12;
+};
+crop.onpointerup=()=>{drag=null};
+$('addd').onclick=()=>{
+  if(!rect||cp<0)return;
+  const src=pages[cp].c,k=src.width/rect.W;
+  const c=document.createElement('canvas');c.width=Math.round(rect.w*k);c.height=Math.round(rect.h*k);
+  c.getContext('2d').drawImage(src,rect.x*k,rect.y*k,rect.w*k,rect.h*k,0,0,c.width,c.height);
+  blocks.push({type:'diagram',text:'',html:'',img:c.toDataURL('image/jpeg',.92)});
+  drawBlocks();rect=null;$('sel').style.display='none';$('addd').disabled=true;
+  $('dst').textContent='Added at the end of your notes. Use Up to move it.';
+};
+
+/* ---------- PDF ---------- */
+const W=1190,H=1684,M=110;
+const FONT="system-ui,'Segoe UI',Roboto,'Noto Sans Devanagari',sans-serif";
+const loadImg=src=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.src=src});
+function wrap(ctx,text,maxW){
+  const out=[];
+  text.split('\n').forEach(par=>{
+    let line='';
+    par.split(/\s+/).forEach(w=>{
+      const t=line?line+' '+w:w;
+      if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w}else line=t;
+    });
+    out.push(line);
+  });
+  return out;
+}
+async function buildPages(){
+  const out=[];let c,ctx,y;
+  const np=()=>{c=document.createElement('canvas');c.width=W;c.height=H;ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.fillStyle='#111';ctx.textBaseline='top';y=M;out.push(c)};
+  np();
+  const title=$('title').value.trim();
+  if(title){
+    ctx.font='700 56px '+FONT;
+    for(const l of wrap(ctx,title,W-2*M)){ctx.fillText(l,M,y);y+=72}
+    ctx.fillRect(M,y+4,W-2*M,3);y+=36;
+  }
+  for(const b of blocks){
+    if(b.type==='diagram'&&b.img){
+      const im=await loadImg(b.img);
+      let w=Math.min(W-2*M,im.width*1.5),h=im.height*w/im.width;
+      if(h>800){h=800;w=im.width*h/im.height}
+      if(y+h>H-M)np();
+      ctx.drawImage(im,M+(W-2*M-w)/2,y,w,h);y+=h+12;
+      if(b.text.trim()){
+        ctx.font='italic 26px '+FONT;ctx.fillStyle='#555';
+        for(const l of wrap(ctx,b.text,W-2*M)){if(y+36>H-M)np();ctx.fillText(l,M,y);y+=36}
+        ctx.fillStyle='#111';
+      }
+      y+=24;continue;
+    }
+    if(!b.text.trim())continue;
+    const head=b.type==='heading',bul=b.type==='bullet';
+    const fs=head?40:30,lh=head?54:44,ind=bul?36:0;
+    const f=(head?'700 ':'400 ')+fs+'px '+FONT;
+    ctx.font=f;
+    if(head)y+=14;
+    wrap(ctx,b.text,W-2*M-ind).forEach((l,k)=>{
+      if(y+lh>H-M){np();ctx.font=f}
+      if(bul&&k===0)ctx.fillText('\u2022',M,y);
+      ctx.fillText(l,M+ind,y);y+=lh;
+    });
+    y+=head?8:14;
+  }
+  return out;
+}
+$('mk').onclick=async()=>{
+  const st=$('st2');$('mk').disabled=true;st.textContent='Making PDF...';
+  try{
+    const list=await buildPages();
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({unit:'pt',format:'a4'});
+    list.forEach((c,i)=>{if(i)pdf.addPage();pdf.addImage(c.toDataURL('image/jpeg',.92),'JPEG',0,0,595.28,841.89)});
+    const name=($('title').value.trim()||'notes').replace(/[^\p{L}\p{N}_ -]/gu,'').slice(0,50)||'notes';
+    pdf.save(name+'.pdf');step(3);st.textContent='PDF saved to your downloads.';
+  }catch(e){st.textContent='Could not make the PDF. Try again.'}
+  $('mk').disabled=false;
+};
+</script>
+</body>
+</html>
